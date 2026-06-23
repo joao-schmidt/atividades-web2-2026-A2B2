@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CasalApp - Gestão Financeira</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 2em; max-width: 900px; margin: auto; color: #333; }
+        h1 { text-align: center; color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; }
+        h2 { color: #2980b9; margin-top: 1.5em; }
+        
+        .painel { display: flex; gap: 20px; }
+        .coluna { flex: 1; }
+        
+        .formulario { padding: 15px; border: 1px solid #ddd; border-radius: 8px; background-color: #f8f9fa; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .formulario input, .formulario select { width: calc(100% - 20px); margin-bottom: 10px; padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+        
+        button { padding: 8px 12px; cursor: pointer; border: none; border-radius: 4px; font-weight: bold; transition: 0.2s; }
+        .btn-salvar { background-color: #27ae60; color: white; width: 100%; }
+        .btn-salvar:hover { background-color: #219653; }
+        
+        .btn-editar { background-color: #f39c12; color: white; padding: 5px 8px; font-size: 0.85em; margin-right: 5px; }
+        .btn-editar:hover { background-color: #d68910; }
+        
+        .btn-apagar { background-color: #e74c3c; color: white; padding: 5px 8px; font-size: 0.85em; }
+        .btn-apagar:hover { background-color: #c0392b; }
+
+        ul { list-style-type: none; padding: 0; }
+        li { background: #fff; margin-bottom: 8px; padding: 12px; border: 1px solid #eee; border-left: 4px solid #3498db; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        
+        .info { flex-grow: 1; }
+        .acoes { min-width: 130px; text-align: right; }
+        .receita { color: #27ae60; font-weight: bold; }
+        .despesa { color: #e74c3c; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <h1>CasalApp - Gestão Financeira</h1>
+
+    <div class="painel">
+
+        <div class="coluna">
+            <h2>Categorias</h2>
+            
+            <div class="formulario">
+                <h3>Nova Categoria</h3>
+                <input type="text" id="catNome" placeholder="Nome (ex: Lazer)">
+                <input type="text" id="catIcone" placeholder="Ícone (ex: bola)">
+                <button class="btn-salvar" onclick="salvarCategoria()">Salvar (POST)</button>
+            </div>
+
+            <ul id="lista-categorias"></ul>
+        </div>
+
+        <div class="coluna">
+            <h2>Transações</h2>
+            
+            <div class="formulario">
+                <h3>Nova Transação</h3>
+                <input type="text" id="transDescricao" placeholder="Descrição (ex: Conta de Luz)">
+                <input type="number" id="transValor" placeholder="Valor (ex: 150.50)" step="0.01">
+                <select id="transTipo">
+                    <option value="despesa">Despesa</option>
+                    <option value="receita">Receita</option>
+                </select>
+                <button class="btn-salvar" onclick="salvarTransacao()">Salvar (POST)</button>
+            </div>
+
+            <ul id="lista-transacoes"></ul>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:8080';
+
+        async function carregarCategorias() { // GET
+            try {
+                const response = await fetch(`${API_URL}/categorias`);
+                const categorias = await response.json();
+                
+                const ul = document.getElementById('lista-categorias');
+                ul.innerHTML = ''; 
+
+                categorias.forEach(cat => {
+                    ul.innerHTML += `
+                        <li>
+                            <div class="info">
+                                <strong>${cat.nome}</strong> (Ícone: ${cat.icone})
+                            </div>
+                            <div class="acoes">
+                                <button class="btn-editar" onclick="editarCategoria(${cat.id}, '${cat.nome}', '${cat.icone}')">Editar</button>
+                                <button class="btn-apagar" onclick="deletarCategoria(${cat.id})">Apagar</button>
+                            </div>
+                        </li>
+                    `;
+                });
+            } catch (error) { console.error("Erro ao carregar categorias:", error); }
+        }
+
+        async function salvarCategoria() { // POST
+            const nome = document.getElementById('catNome').value;
+            const icone = document.getElementById('catIcone').value;
+            if (!nome || !icone) return alert("Preencha nome e ícone!");
+
+            await fetch(`${API_URL}/categorias`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ nome, icone })
+            });
+
+            document.getElementById('catNome').value = '';
+            document.getElementById('catIcone').value = '';
+            carregarCategorias();
+        }
+
+        async function deletarCategoria(id) { // DELETE
+            if(confirm("Tem certeza que deseja apagar esta categoria?")) {
+                await fetch(`${API_URL}/categorias/${id}`, { method: 'DELETE' });
+                carregarCategorias();
+            }
+        }
+
+        async function editarCategoria(id, nomeAtual, iconeAtual) { // PUT
+            const novoNome = prompt("Digite o novo nome:", nomeAtual);
+            const novoIcone = prompt("Digite o novo ícone:", iconeAtual);
+            
+            if (novoNome && novoIcone) {
+                await fetch(`${API_URL}/categorias/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nome: novoNome, icone: novoIcone })
+                });
+                carregarCategorias();
+            }
+        }
+
+        async function carregarTransacoes() { // GET
+            try {
+                const response = await fetch(`${API_URL}/transacoes`);
+                const transacoes = await response.json();
+                
+                const ul = document.getElementById('lista-transacoes');
+                ul.innerHTML = ''; 
+
+                transacoes.forEach(t => {
+                    const classeTipo = t.tipo === 'receita' ? 'receita' : 'despesa';
+                    const sinal = t.tipo === 'receita' ? '+' : '-';
+                    
+                    ul.innerHTML += `
+                        <li>
+                            <div class="info">
+                                <strong>${t.descricao}</strong><br>
+                                <span class="${classeTipo}">${sinal} R$ ${t.valor.toFixed(2)}</span>
+                            </div>
+                            <div class="acoes">
+                                <button class="btn-editar" onclick="editarTransacao(${t.id}, '${t.descricao}', ${t.valor}, '${t.tipo}')">Editar</button>
+                                <button class="btn-apagar" onclick="deletarTransacao(${t.id})">Apagar</button>
+                            </div>
+                        </li>
+                    `;
+                });
+            } catch (error) { console.error("Erro ao carregar transações:", error); }
+        }
+
+        async function salvarTransacao() { // POST
+            const descricao = document.getElementById('transDescricao').value;
+            const valor = document.getElementById('transValor').value;
+            const tipo = document.getElementById('transTipo').value;
+            if (!descricao || !valor) return alert("Preencha descrição e valor!");
+
+            await fetch(`${API_URL}/transacoes`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ descricao, valor: parseFloat(valor), tipo })
+            });
+
+            document.getElementById('transDescricao').value = '';
+            document.getElementById('transValor').value = '';
+            carregarTransacoes();
+        }
+
+        async function deletarTransacao(id) {
+            if(confirm("Tem certeza que deseja apagar esta transação?")) {
+                await fetch(`${API_URL}/transacoes/${id}`, { method: 'DELETE' });
+                carregarTransacoes();
+            }
+        }
+
+        async function editarTransacao(id, descAtual, valorAtual, tipoAtual) { 
+            const novoValor = prompt(`Atualizar valor de ${descAtual} (Atual: R$ ${valorAtual}):`, valorAtual);
+            
+            if (novoValor && !isNaN(novoValor)) {
+                await fetch(`${API_URL}/transacoes/${id}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ valor: parseFloat(novoValor) }) 
+                });
+                carregarTransacoes();
+            }
+        }
+
+        carregarCategorias();
+        carregarTransacoes();
+    </script>
+
+</body>
+</html>
